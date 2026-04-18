@@ -1,0 +1,89 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String
+  phone        String?
+  profile      Profile?
+  applications Application[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Profile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  summary     String?  @db.Text
+  workHistory Json     @default("[]")
+  education   Json     @default("[]")
+  skills      String[]
+  resumeText  String?  @db.Text
+  resumeUrl   String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Application {
+  id              String            @id @default(cuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  jobTitle        String
+  company         String
+  jobUrl          String
+  jobDescription  String            @db.Text
+  
+  status          ApplicationStatus @default(NOT_SUBMITTED)
+  
+  matchScore      Int?
+  strengths       String[]          @default([])
+  gaps            String[]          @default([])
+  recommendations String[]          @default([])
+  
+  tailoredAnswers Json?             @default("{}")
+  
+  appliedDate     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([userId, status])
+  @@index([createdAt])
+}
+
+enum ApplicationStatus {
+  NOT_SUBMITTED
+  SUBMITTED
+  INITIAL_RESPONSE
+  INTERVIEW_REQUESTED
+  REJECTED_AFTER_APPLY
+  REJECTED_AFTER_INTERVIEW
+  ONSITE_REQUESTED
+  OFFER_RECEIVED
+}
+
+model Feedback {
+  id            String   @id @default(cuid())
+  userId        String
+  applicationId String?
+  
+  featureType   String
+  helpful       Boolean
+  comment       String?
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([featureType])
+}
