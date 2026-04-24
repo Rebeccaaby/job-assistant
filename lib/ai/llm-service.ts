@@ -33,34 +33,63 @@ export class LLMService {
    * Extract JSON from DeepSeek R1 response that may contain <think> tags
    */
   private extractJSON(content: string): string {
-    // DeepSeek R1 often returns: <think>reasoning...</think>\n{json}
-    // We need to extract just the JSON part
+    console.log('extractJSON input length:', content.length);
+    console.log('Has closing </think> tag?', content.includes('</think>'));
     
-    // Remove <think>...</think> tags and everything inside them
-    let cleaned = content.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    let cleaned = content;
+    
+    // DeepSeek R1 sometimes doesn't close the <think> tag
+    // Two strategies:
+    
+    // Strategy 1: If there's a closing tag, remove the whole block
+    if (content.includes('</think>')) {
+      cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
+      console.log('Removed closed <think> tags');
+    } 
+    // Strategy 2: If <think> is never closed, remove everything from <think> to the first {
+    else if (content.includes('<think>')) {
+      const thinkStart = cleaned.indexOf('<think>');
+      const firstBrace = cleaned.indexOf('{');
+      
+      if (thinkStart !== -1 && firstBrace !== -1 && firstBrace > thinkStart) {
+        // Remove everything from <think> to just before the {
+        cleaned = cleaned.substring(0, thinkStart) + cleaned.substring(firstBrace);
+        console.log('Removed unclosed <think> tag and everything before {');
+      }
+    }
+    
+    console.log('After removing <think> (first 300 chars):', cleaned.substring(0, 300));
     
     // Trim whitespace
     cleaned = cleaned.trim();
     
-    // If it starts with ```json, remove markdown code blocks
+    // Remove markdown code blocks if present
     if (cleaned.startsWith('```json')) {
-      cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
+      cleaned = cleaned.replace(/^```json\s*/g, '');
+      cleaned = cleaned.replace(/```\s*$/g, '');
     } else if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/```\n?/g, '');
+      cleaned = cleaned.replace(/^```\s*/g, '');
+      cleaned = cleaned.replace(/```\s*$/g, '');
     }
     
-    // Find the first { and last } to extract JSON object
+    // Trim again
+    cleaned = cleaned.trim();
+    
+    // Final check: Extract from first { to last }
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
     
     if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
       cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+      console.log('JSON extracted successfully (first 200 chars):', cleaned.substring(0, 200));
+    } else {
+      console.log('No valid JSON braces found');
     }
     
-    return cleaned.trim();
+    return cleaned;
   }
 
-  async chat(messages: ChatCompletionMessageParam[], options?: {
+    async chat(messages: ChatCompletionMessageParam[], options?: {
     temperature?: number;
     maxTokens?: number;
   }) {
@@ -69,13 +98,19 @@ export class LLMService {
         model: this.deploymentName,
         messages,
         temperature: options?.temperature ?? 0.7,
-        max_tokens: options?.maxTokens ?? 1500,
+        max_tokens: options?.maxTokens ?? 2000,
       });
 
       const content = response.choices[0].message.content || "";
       
+      console.log('Raw API response (first 500 chars):', content.substring(0, 500));
+      
       // For DeepSeek, extract content after <think> tags
-      return this.extractJSON(content);
+      const cleaned = this.extractJSON(content);
+      
+      console.log('Cleaned response (first 300 chars):', cleaned.substring(0, 300));
+      
+      return cleaned;
     } catch (error) {
       console.error("LLM Service Error:", error);
       throw new Error("Failed to get LLM response");
@@ -85,50 +120,46 @@ export class LLMService {
   async generateStructuredOutput<T>(
     systemPrompt: string,
     userPrompt: string,
-    schema?: {
-      name: string;
-      description: string;
-      parameters: any;
-    }
+    tool: { name: string; description: string; parameters: any }
   ): Promise<T> {
     try {
-      // For DeepSeek R1, we need to be explicit about JSON-only output
-      const enhancedSystemPrompt = `${systemPrompt}
-
-CRITICAL: You must respond with ONLY valid JSON. Do not include any <think> tags, explanations, or markdown formatting in your response. Just pure JSON that matches the schema.`;
-
-      const response = await this.client.chat.completions.create({
-        model: this.deploymentName,
-        messages: [
-          { role: "system", content: enhancedSystemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 2000,
-      });
-
-      let content = response.choices[0].message.content || "{}";
+      const messages: ChatCompletionMessageParam[] = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ];
       
-      console.log("Raw LLM Response (first 200 chars):", content.substring(0, 200));
+      const cleanedResponse = await this.chat(messages);
       
-      // Extract JSON from DeepSeek response
-      content = this.extractJSON(content);
+      console.log('Final response (first 300):', cleanedResponse.substring(0, 300));
       
-      console.log("Extracted JSON (first 200 chars):", content.substring(0, 200));
+      // AGGRESSIVE FINAL CLEANING
+      let finalClean = cleanedResponse;
       
-      // Parse and return
-      const parsed = JSON.parse(content);
+      // Remove any remaining <think> tags (shouldn't be here but just in case)
+      finalClean = finalClean.replace(/<think>[\s\S]*?<\/think>/gi, '');
+      
+      // Remove everything before the first {
+      const firstBrace = finalClean.indexOf('{');
+      if (firstBrace > 0) {
+        finalClean = finalClean.substring(firstBrace);
+      }
+      
+      // Remove everything after the last }
+      const lastBrace = finalClean.lastIndexOf('}');
+      if (lastBrace !== -1 && lastBrace < finalClean.length - 1) {
+        finalClean = finalClean.substring(0, lastBrace + 1);
+      }
+      
+      console.log('AGGRESSIVELY cleaned (first 200):', finalClean.substring(0, 200));
+      
+      // Try to parse
+      const parsed = JSON.parse(finalClean);
+      console.log('JSON parsed successfully');
+      
       return parsed as T;
       
     } catch (error: any) {
-      console.error("Structured output generation failed:", error);
-      
-      // More detailed error logging
-      if (error instanceof SyntaxError) {
-        console.error("JSON Parse Error - This means the LLM didn't return valid JSON");
-        console.error("This is common with DeepSeek R1 - trying alternative approach...");
-      }
-      
+      console.error('Failed:', error);
       throw new Error(`Failed to generate structured output: ${error.message}`);
     }
   }

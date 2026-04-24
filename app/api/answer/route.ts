@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Generate answer with AI
-    console.log('🤖 Generating tailored answer...');
+    console.log('Generating tailored answer...');
     const result = await answerGeneratorAgent.generate(
       question,
       application.jobDescription,
