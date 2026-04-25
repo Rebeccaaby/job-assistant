@@ -1,53 +1,96 @@
-import { PrismaClient } from '@prisma/client'
-import { PrismaPg } from '@prisma/adapter-pg'
-import pg from 'pg'
-import 'dotenv/config'
-import { TEST_USER_ID, TEST_USER_EMAIL, TEST_USER_NAME } from '../lib/constants';
+// import { PrismaClient } from '@prisma/client'
+// import { PrismaPg } from '@prisma/adapter-pg'
+// import pg from 'pg'
+// import 'dotenv/config'
+// import { TEST_USER_ID, TEST_USER_EMAIL, TEST_USER_NAME } from '../lib/constants';
 
-// 1. Setup the connection pool
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
+// // 1. Setup the connection pool
+// const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
 
-// 2. Setup the Prisma adapter
-const adapter = new PrismaPg(pool)
+// // 2. Setup the Prisma adapter
+// const adapter = new PrismaPg(pool)
 
-// 3. Pass the adapter to the constructor (Required in Prisma 7)
-const prisma = new PrismaClient({ adapter })
+// // 3. Pass the adapter to the constructor (Required in Prisma 7)
+// const prisma = new PrismaClient({ adapter })
 
-async function main() {
-  // Delete existing data
-  await prisma.application.deleteMany();
-  await prisma.profile.deleteMany();
-  await prisma.user.deleteMany();
+// // async function main() {
+// //   console.log('Seeding database...');
 
-  // Create test user
-  const user = await prisma.user.create({
-    data: {
-      id: TEST_USER_ID,
-      email: TEST_USER_EMAIL,
-      name: TEST_USER_NAME,
-      profile: {
-        create: {
-          summary: '',
-          skills: [],
-          workHistory: [],
-          education: [],
-        }
-      }
-    },
-    include: { profile: true }
-  });
+// //   // Create test user
+// //   const user = await prisma.user.upsert({
+// //     where: { id: 'test-user-mvp' },
+// //     update: {},
+// //     create: {
+// //       id: 'test-user-mvp',
+// //       email: 'test@example.com',
+// //       name: 'Test User',
+// //     },
+// //   });
 
-  console.log('Test user created:', user.email);
-}
+// //   console.log('Created user:', user.id);
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// //   // Create empty profile for test user
+// //   const profile = await prisma.profile.upsert({
+// //     where: { userId: 'test-user-mvp' },
+// //     update: {},
+// //     create: {
+// //       userId: 'test-user-mvp',
+// //       summary: '',
+// //       workHistory: [],
+// //       education: [],
+// //       skills: [],
+// //       resumeText: '',
+// //     },
+// //   });
+
+// //   console.log('Created profile for user:', profile.userId);
+// //   console.log('Seeding completed!');
+// // }
+
+// // main()
+// //   .catch((e) => {
+// //     console.error('Seeding failed:', e);
+// //     process.exit(1);
+// //   })
+// //   .finally(async () => {
+// //     await prisma.$disconnect();
+// //   });
+
+// // async function main() {
+// //   // Delete existing data
+// //   await prisma.application.deleteMany();
+// //   await prisma.profile.deleteMany();
+// //   await prisma.user.deleteMany();
+
+// //   // Create test user
+// //   const user = await prisma.user.create({
+// //     data: {
+// //       id: TEST_USER_ID,
+// //       email: TEST_USER_EMAIL,
+// //       name: TEST_USER_NAME,
+// //       profile: {
+// //         create: {
+// //           summary: '',
+// //           skills: [],
+// //           workHistory: [],
+// //           education: [],
+// //         }
+// //       }
+// //     },
+// //     include: { profile: true }
+// //   });
+
+// //   console.log('Test user created:', user.email);
+// // }
+
+// // main()
+// //   .catch((e) => {
+// //     console.error(e);
+// //     process.exit(1);
+// //   })
+// //   .finally(async () => {
+// //     await prisma.$disconnect();
+// //   });
 
 // async function main() {
 //   // Create a test user
@@ -98,3 +141,56 @@ main()
 //   .finally(async () => {
 //     await prisma.$disconnect();
 //   });
+
+// prisma/seed.ts
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
+
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
+
+async function main() {
+  console.log('🌱 Seeding database...');
+
+  // Create test user
+  const user = await prisma.user.upsert({
+    where: { id: 'test-user-mvp' },
+    update: {},
+    create: {
+      id: 'test-user-mvp',
+      email: 'test@example.com',
+      name: 'Test User',
+      phone: '555-0123',
+    },
+  });
+
+  console.log('Created user:', user.id);
+
+  // Create empty profile for test user
+  const profile = await prisma.profile.upsert({
+    where: { userId: 'test-user-mvp' },
+    update: {},
+    create: {
+      userId: 'test-user-mvp',
+      summary: '',
+      workHistory: [],
+      education: [],
+      skills: [],
+      resumeText: '',
+    },
+  });
+
+  console.log('Created profile for user:', profile.userId);
+  console.log('Seeding completed!');
+}
+
+main()
+  .catch((e) => {
+    console.error('Seeding failed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

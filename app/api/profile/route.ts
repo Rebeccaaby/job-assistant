@@ -1,5 +1,5 @@
 // app/api/profile/route.ts
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/db";
 import { TEST_USER_ID } from "@/lib/constants";
 
 export async function GET(request: Request) {

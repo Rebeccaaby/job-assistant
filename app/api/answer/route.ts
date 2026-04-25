@@ -1,5 +1,5 @@
 // app/api/answer/route.ts
-import { prisma } from '@/lib/db';
+import prisma from '@/lib/db';
 import { TEST_USER_ID } from '@/lib/constants';
 import { answerGeneratorAgent } from '@/lib/ai/agents/answer-generator';
 import { z } from 'zod';

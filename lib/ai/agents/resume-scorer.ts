@@ -22,36 +22,37 @@ export class ResumeScorerAgent {
       education: any[];
     }
   ): Promise<ResumeAnalysis> {
+
     const systemPrompt = `You are an expert resume analyzer and career coach.
+    CRITICAL: You must output VALID JSON.
+    - No markdown code blocks (no \`\`\`json).
+    - No reasoning text or <think> tags in the final response.
+    - Every property name and string must use double quotes (").
+    - No trailing commas at the end of arrays.
 
-Your job is to compare a candidate's resume against a job description and provide a match score with detailed feedback.
+    The JSON must follow this EXACT schema:
+    {
+      "matchScore": number,
+      "strengths": string[],
+      "gaps": string[],
+      "recommendations": string[],
+      "reasoning": string
+    }`;
 
-RESPONSE FORMAT: You must respond with ONLY a JSON object. No markdown, no explanations outside the JSON, no <think> tags.
+        const userPrompt = `Compare this resume to the job description and return the analysis as JSON.
+        
+    RESUME:
+    ${resumeText}
 
-The JSON must have this exact structure:
-{
-  "matchScore": <number between 0-100>,
-  "strengths": [<array of 3-5 strings>],
-  "gaps": [<array of 3-5 strings>],
-  "recommendations": [<array of 3-5 strings>],
-  "reasoning": "<brief explanation string>"
-}`;
+    JOB DESCRIPTION:
+    ${jobDescription}
 
-    const userPrompt = `Analyze this resume against the job description.
+    ${userProfile ? `ADDITIONAL INFO:
+    - Skills: ${userProfile.skills.join(', ')}
+    - Years of Experience: ${this.calculateExperience(userProfile.workHistory)}` : ''}
 
-RESUME:
-${resumeText}
+    REMINDER: Return ONLY the JSON object. Ensure the JSON is complete and not truncated.`;
 
-${userProfile ? `
-ADDITIONAL INFO:
-- Skills: ${userProfile.skills.join(', ')}
-- Years of Experience: ${this.calculateExperience(userProfile.workHistory)}
-` : ''}
-
-JOB DESCRIPTION:
-${jobDescription}
-
-Respond with ONLY the JSON object - no other text.`;
 
     try {
       const result = await llmService.generateStructuredOutput<ResumeAnalysis>(

@@ -1,5 +1,5 @@
 // app/api/applications/route.ts
-import { prisma } from '@/lib/db';
+import prisma from '@/lib/db';
 import { TEST_USER_ID } from '@/lib/constants';
 
 // GET /api/applications - List all applications with stats

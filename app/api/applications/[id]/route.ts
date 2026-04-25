@@ -1,5 +1,5 @@
 // app/api/applications/[id]/route.ts
-import { prisma } from '@/lib/db';
+import prisma from '@/lib/db';
 import { z } from 'zod';
 
 const UpdateSchema = z.object({

@@ -1,5 +1,5 @@
 // app/api/analyze/route.ts
-import { prisma } from '@/lib/db';
+import prisma from '@/lib/db';
 import { TEST_USER_ID } from '@/lib/constants';
 import { resumeScorerAgent } from '@/lib/ai/agents/resume-scorer';
 import { z } from 'zod';
