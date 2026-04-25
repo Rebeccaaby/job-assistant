@@ -272,7 +272,7 @@ npx prisma db seed   # Seed database
 
 ## Demo
 
-For a full demo of the application, see the demo video: [Add your demo video link]
+For a full demo of the application, see the demo video: [(https://drive.google.com/file/d/1RZRNAVtNHsMMpSBw93hrfUghMm3s1NEf/view?usp=sharing)]
 
 
 ## References
